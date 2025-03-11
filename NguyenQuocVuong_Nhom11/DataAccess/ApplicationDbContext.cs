@@ -4,7 +4,7 @@ using NguyenQuocVuong_Nhom11.Models;
 
 namespace NguyenQuocVuong_Nhom11.DataAccess
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext>
 options) : base(options)
