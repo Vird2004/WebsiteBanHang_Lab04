@@ -1,6 +1,7 @@
 ﻿using NguyenQuocVuong_Nhom11.DataAccess;
 using NguyenQuocVuong_Nhom11.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 
 
@@ -49,5 +50,19 @@ namespace NguyenQuocVuong_Nhom11.Repositories
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<Product>> GetFilteredAsync(Expression<Func<Product, bool>> filter, bool includeCategory = false)
+        {
+            var query = _context.Products.AsQueryable();
+
+            if (includeCategory)
+            {
+                query = query.Include(p => p.Category);
+            }
+
+            return await query.Where(filter).ToListAsync();
+        }
+
+
     }
 }

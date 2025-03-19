@@ -4,11 +4,14 @@ using Microsoft.AspNetCore.Authorization;
 using NguyenQuocVuong_Nhom11.Models;
 using NguyenQuocVuong_Nhom11.Repositories;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace NguyenQuocVuong_Nhom11.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = SD.Role_Admin)]
+    //[Authorize(Roles = $"{SD.Role_Admin},{SD.Role_Employee}")]
+    //(Roles = SD.Role_Admin + SD.Role_Employee)
     public class ProductController : Controller
     {
         private readonly IProductRepository _productRepository;
@@ -22,6 +25,7 @@ ICategoryRepository categoryRepository)
         }
 
         //Hien thi danh sach san pham
+        [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
             var products = await _productRepository.GetAllAsync();
@@ -29,6 +33,7 @@ ICategoryRepository categoryRepository)
         }
 
         //Hien thi form them san pham moi
+        [Authorize(Roles = SD.Role_Admin)]
         public async Task<IActionResult> Add()
         {
             var categories = await _categoryRepository.GetAllAsync();
@@ -38,6 +43,7 @@ ICategoryRepository categoryRepository)
 
         //Xu ly them san pham moi
         [HttpPost]
+        [Authorize(Roles = SD.Role_Admin)]
         public async Task<IActionResult> Add(Product product, IFormFile
 imageUrl)
         {
@@ -71,6 +77,7 @@ imageUrl)
         }
 
         //Hien thi thong tin chi tiet san pham
+        [AllowAnonymous]
         public async Task<IActionResult> Display(int id)
         {
             var product = await _productRepository.GetByIdAsync(id);
@@ -82,6 +89,7 @@ imageUrl)
         }
 
         //Hien thi form cap nhat san pham
+        [Authorize(Roles = $"{SD.Role_Admin},{SD.Role_Employee}")]
         public async Task<IActionResult> Update(int id)
         {
             var product = await _productRepository.GetByIdAsync(id);
@@ -95,14 +103,26 @@ imageUrl)
 product.CategoryId);
             return View(product);
         }
+       // [Authorize(Roles = SD.Role_Admin + SD.Role_Employee)]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var product = await _productRepository.GetByIdAsync(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.Categories = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", product.CategoryId);
+            return View(product);
+        }
 
         //Xu ly cap nhat san pham
         [HttpPost]
-        public async Task<IActionResult> Update(int id, Product product,
-IFormFile imageUrl)
+        [Authorize(Roles = $"{SD.Role_Admin},{SD.Role_Employee}")]
+        public async Task<IActionResult> Update(int id, Product product, IFormFile imageUrl)
         {
-            ModelState.Remove("ImageUrl"); // Loại bỏ xác thực ModelState cho 
-            //ImageUrl
+            ModelState.Remove("ImageUrl");
+
             if (id != product.Id)
             {
                 return NotFound();
@@ -110,22 +130,19 @@ IFormFile imageUrl)
 
             if (ModelState.IsValid)
             {
+                var existingProduct = await _productRepository.GetByIdAsync(id);
 
-                var existingProduct = await
-_productRepository.GetByIdAsync(id); // Giả định có phương thức GetByIdAsync 
-
-                // Giữ nguyên thông tin hình ảnh nếu không có hình mới được 
-                //tải lên
+                // Nếu không có ảnh mới, giữ nguyên ảnh cũ
                 if (imageUrl == null)
                 {
                     product.ImageUrl = existingProduct.ImageUrl;
                 }
                 else
                 {
-                    // Lưu hình ảnh mới 
+                    // Lưu ảnh mới
                     product.ImageUrl = await SaveImage(imageUrl);
                 }
-                // Cập nhật các thông tin khác của sản phẩm 
+
                 existingProduct.Name = product.Name;
                 existingProduct.Price = product.Price;
                 existingProduct.Description = product.Description;
@@ -133,15 +150,16 @@ _productRepository.GetByIdAsync(id); // Giả định có phương thức GetByI
                 existingProduct.ImageUrl = product.ImageUrl;
 
                 await _productRepository.UpdateAsync(existingProduct);
-                return RedirectToAction("Index", "Product", new { area = "Admin" });
-
+                return RedirectToAction(nameof(Index));
             }
-            var categories = await _categoryRepository.GetAllAsync();
-            ViewBag.Categories = new SelectList(categories, "Id", "Name");
+
+            ViewBag.Categories = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name");
             return View(product);
         }
 
+
         // Hiển thị form xác nhận xóa sản phẩm 
+        [Authorize(Roles = SD.Role_Admin)]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _productRepository.GetByIdAsync(id);
@@ -153,11 +171,27 @@ _productRepository.GetByIdAsync(id); // Giả định có phương thức GetByI
         }
         // Xử lý xóa sản phẩm 
         [HttpPost, ActionName("DeleteConfirmed")]
+        [Authorize(Roles = SD.Role_Admin)]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             await _productRepository.DeleteAsync(id);
-            return RedirectToAction("Index", "Product", new { area = "Admin" });
+            return RedirectToAction(nameof(Index));
+        }
 
+        [AllowAnonymous]
+        public async Task<IActionResult> Search(string keyword)
+        {
+            var products = string.IsNullOrEmpty(keyword)
+                ? await _productRepository.GetAllAsync()
+                : await _productRepository.GetFilteredAsync(p => p.Name.Contains(keyword));
+
+            return View("Index", products);
+        }
+
+        public async Task<List<Product>> GetFilteredAsync(Expression<Func<Product, bool>> filter)
+        {
+            var products = await _productRepository.GetAllAsync();
+            return products.Where(filter.Compile()).ToList();
         }
 
     }
