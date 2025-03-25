@@ -1,0 +1,46 @@
+﻿@model Order
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    ViewData["Title"] = "Tạo Đơn Hàng";
+    var currentUser = await UserManager.GetUserAsync(User);
+}
+
+<h2>Tạo Đơn Hàng Mới</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Người đặt hàng</label>
+        <input type="text" class="form-control" value="@currentUser.UserName" disabled>
+        <input type="hidden" asp-for="UserId" value="@currentUser.Id">
+    </div>
+
+    <div class="form-group">
+        <label>Ngày đặt</label>
+        <input type="text" class="form-control" value="@DateTime.Now.ToString("dd/MM/yyyy HH:mm")" disabled>
+    </div>
+
+    <div class="form-group">
+        <label>Địa chỉ giao hàng</label>
+        <input type="text" class="form-control" asp-for="ShippingAddress" required>
+    </div>
+
+    <div class="form-group">
+        <label>Ghi chú</label>
+        <textarea class="form-control" asp-for="Notes"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Chọn sản phẩm</label>
+        <select multiple class="form-control" name="SelectedProducts">
+            @foreach (var product in ViewBag.Products)
+            {
+                    <option value="@product.Id">@product.Name - @product.Price.ToString("C")</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-success">Tạo Đơn Hàng</button>
+    <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+</form>

@@ -40,6 +40,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/Admin/Category">Danh Mục</a>
                     </li>
+                    <li class="nav-item">
+    <a class="nav-link" asp-controller="Order" asp-action="Index">Đơn hàng</a>
+</li>
 
 
                 </ul>
@@ -64,14 +67,14 @@
             <a class="btn btn-primary" href="/Identity/Account/Register">Đăng ký</a>
                     }
                     <!--Them button gio hang-->
-                    <li class="nav-item">
-    <a class="nav-link" href="@Url.Action("Index", "ShoppingCart")">
-        🛒 Giỏ hàng 
-        <span class="badge bg-danger" id="cartItemCount">
+                    <li>
+    <a href="@Url.Action("Index", "ShoppingCart")">
+        🛒 Giỏ hàng <span class="badge bg-danger" id="cart-count">
                                 @(Context.Session.GetInt32("CartItemCount") ?? 0)
-        </span>
+</span>
     </a>
 </li>
+
 
                 </div>
 
@@ -114,6 +117,20 @@
                     });
             });
         });
+    });
+</script>
+
+<script>
+    function updateCartCount() {
+        fetch('/ShoppingCart/GetCartItemCount')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('cart-count').innerText = data.count;
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateCartCount();
     });
 </script>
 

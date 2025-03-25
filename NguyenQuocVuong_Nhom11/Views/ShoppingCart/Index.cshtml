@@ -1,7 +1,12 @@
 ﻿@model ShoppingCart
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 
 @{
     ViewData["Title"] = "Giỏ hàng của bạn";
+    var user = await UserManager.GetUserAsync(User);
+    var isCustomer = user != null && await UserManager.IsInRoleAsync(user, "Customer");
 }
 
 <div class="container mt-5">
@@ -12,7 +17,7 @@
             <div class="alert alert-warning text-center">
                 <h4>Giỏ hàng trống</h4>
                 <p>Hãy thêm sản phẩm vào giỏ hàng ngay nào!</p>
-                <a href="@Url.Action("Index", "Product")" class="btn btn-primary">Mua sắm ngay</a>
+                <a href="@Url.Action("Index", "Home")" class="btn btn-primary">Mua sắm ngay</a>
             </div>
     }
     else
@@ -31,34 +36,145 @@
                 <tbody>
                 @foreach (var item in Model.Items)
                 {
-                            <tr>
-                                <td>
-                                    <img src="@item.ImageUrl" alt="@item.Name" width="70" class="rounded">
-                                </td>
-                                <td>@item.Name</td>
-                                <td>@item.Price.ToString("N0") đ</td>
-                                <td>
-                                    <input type="number" class="form-control text-center update-quantity" 
-                                           data-id="@item.ProductId" value="@item.Quantity" min="1">
-                                </td>
-                                <td>@((item.Price * item.Quantity).ToString("N0")) đ</td>
-                                <td>
-                                    <a href="@Url.Action("RemoveFromCart", "ShoppingCart", new { productId = item.ProductId })"
-                                       class="btn btn-danger btn-sm">
-                                        ❌ Xóa
-                                    </a>
-                                </td>
-                            </tr>
+            <tr>
+                <td>
+                    <img src="@item.ImageUrl" alt="@item.Name" width="70" class="rounded">
+                </td>
+                <td>@item.Name</td>
+                <td>@item.Price.ToString("N0") đ</td>
+                <td>
+                    <input type="number" class="form-control text-center update-quantity" 
+                           data-id="@item.ProductId" value="@item.Quantity" min="1">
+                </td>
+                <td>@((item.Price * item.Quantity).ToString("N0")) đ</td>
+                <td>
+                                            <button onclick="removeFromCart(2)">Xóa sản phẩm</button>
+
+
+                </td>
+            </tr>
                 }
+
+    <!-- Đặt script bên ngoài vòng lặp -->
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+            function removeFromCart(productId) {
+        fetch('/ShoppingCart/RemoveFromCart', {
+            method: 'POST', // 🔥 Chỉ định POST để tránh lỗi HTTP 405
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(productId) // Gửi dữ liệu đúng định dạng JSON
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message); // Hiển thị thông báo từ server
+            if (data.success) {
+                location.reload(); // Load lại trang nếu xóa thành công
+            }
+        })
+        .catch(error => console.error('Lỗi:', error));
+    }
+
+    </script>
+
+
+
                 </tbody>
             </table>
 
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <h4 class="text-primary">Tổng tiền: <span class="fw-bold text-danger">@Model.Items.Sum(i => i.Price * i.Quantity).ToString("N0") đ</span></h4>
                 <div>
-                    <a href="@Url.Action("Index", "Product")" class="btn btn-outline-secondary">🔄 Tiếp tục mua sắm</a>
-                    <a href="@Url.Action("Checkout", "ShoppingCart")" class="btn btn-success">💳 Thanh toán</a>
+                    <a href="@Url.Action("Index" ,"Home")" class="btn btn-outline-secondary">🔄 Tiếp tục mua sắm</a>
+                        <a href="#" class="btn btn-warning clear-cart">🗑 Xóa tất cả</a>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $(".clear-cart").on("click", function (e) {
+                e.preventDefault(); // Ngăn chặn hành động mặc định của thẻ <a>
+
+                $.post("/ShoppingCart/ClearCart", function () {
+                    location.reload(); // Reload lại trang sau khi xóa giỏ hàng
+                }).fail(function () {
+                    alert("Lỗi khi xóa giỏ hàng!"); // Hiển thị lỗi nếu API thất bại
+                });
+            });
+        });
+    </script>
+
+                @if (isCustomer)
+                {
+            <a href="@Url.Action("Checkout", "ShoppingCart")" class="btn btn-success">💳 Thanh toán</a>
+                }
+                else
+                {
+            <div class="alert alert-danger mt-3">
+                <strong>⚠ Chỉ khách hàng mới có thể đặt hàng!</strong>
+            </div>
+                }
                 </div>
             </div>
     }
 </div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // 🔄 Cập nhật số lượng sản phẩm
+        $(".update-quantity").on("change", function () {
+            let productId = $(this).data("id");
+            let quantity = $(this).val();
+
+            $.ajax({
+                url: "/ShoppingCart/UpdateCart",
+                type: "POST",
+                data: { productId: productId, quantity: quantity },
+                success: function (response) {
+                    $("#cart-content").html(response);
+                    updateCartCount();
+                }
+            });
+        });
+
+        // ❌ Xóa sản phẩm khỏi giỏ hàng
+        $(".remove-item").on("click", function (e) {
+            e.preventDefault();
+            let productId = $(this).data("id");
+
+            $.ajax({
+                url: "/ShoppingCart/RemoveFromCart",
+                type: "POST",
+                data: { productId: productId },
+                success: function (response) {
+                    $("#cart-content").html(response);
+                    updateCartCount();
+                }
+            });
+        });
+
+        // 🗑 Xóa tất cả sản phẩm trong giỏ hàng
+        $("#clear-cart").on("click", function (e) {
+            e.preventDefault();
+            $.ajax({
+                url: "/ShoppingCart/ClearCart",
+                type: "POST",
+                success: function (response) {
+                    $("#cart-content").html(response);
+                    updateCartCount();
+                }
+            });
+        });
+
+        // 🔄 Cập nhật số lượng sản phẩm hiển thị trên giỏ hàng
+        function updateCartCount() {
+            $.ajax({
+                url: "/ShoppingCart/GetCartCount",
+                type: "GET",
+                success: function (count) {
+                    $("#cart-count").text(count);
+                }
+            });
+        }
+    });
+</script>

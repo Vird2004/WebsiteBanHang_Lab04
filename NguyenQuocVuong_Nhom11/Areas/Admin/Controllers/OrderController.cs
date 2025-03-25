@@ -51,5 +51,7 @@ namespace NguyenQuocVuong_Nhom11.Areas.Admin.Controllers
             await _orderRepository.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
+
+
     }
 }

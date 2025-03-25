@@ -1,0 +1,32 @@
+﻿@model List<CartItem>
+
+@if (Model.Any())
+{
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>Giá</th>
+                    <th>Số lượng</th>
+                    <th>Tổng</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td>@item.Price.ToString("N0") đ</td>
+                            <td><input type="number" class="update-quantity" data-id="@item.ProductId" value="@item.Quantity" min="1"></td>
+                            <td>@((item.Price * item.Quantity).ToString("N0")) đ</td>
+                            <td><button class="remove-item btn btn-danger btn-sm" data-id="@item.ProductId">❌</button></td>
+                        </tr>
+            }
+            </tbody>
+        </table>
+}
+else
+{
+        <p class="text-center text-muted">🛒 Giỏ hàng trống!</p>
+}

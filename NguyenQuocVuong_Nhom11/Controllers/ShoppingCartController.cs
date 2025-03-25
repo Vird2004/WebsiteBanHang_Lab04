@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NguyenQuocVuong_Nhom11.DataAccess;
@@ -14,6 +15,7 @@ namespace NguyenQuocVuong_Nhom11.Controllers
         private readonly IProductRepository _productRepository;
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ICartService _cartService; // 🔹 Khai báo _cartService
         public ShoppingCartController(ApplicationDbContext context,
     UserManager<ApplicationUser> userManager, IProductRepository
     productRepository)
@@ -23,11 +25,13 @@ namespace NguyenQuocVuong_Nhom11.Controllers
             _userManager = userManager;
         }
 
+        [Authorize(Roles = SD.Role_Customer)]
         public IActionResult Checkout()
         {
             return View(new Order());
         }
 
+        [Authorize(Roles = SD.Role_Customer)]
         [HttpPost]
         public async Task<IActionResult> Checkout(Order order)
         {
@@ -106,17 +110,21 @@ namespace NguyenQuocVuong_Nhom11.Controllers
             HttpContext.Session.SetInt32("CartItemCount", cart.Items.Sum(i => i.Quantity));
         }
 
-        public IActionResult RemoveFromCart(int productId)
+
+
+        [HttpPost] // Chỉ chấp nhận yêu cầu POST để tránh lỗi 405
+        public IActionResult RemoveFromCart([FromBody] int productId)
         {
-            var cart = HttpContext.Session.GetObjectFromJson<ShoppingCart>("Cart") ?? new ShoppingCart();
+            var cart = HttpContext.Session.GetObjectFromJson<ShoppingCart>("Cart");
+            if (cart != null)
+            {
+                cart.RemoveItem(productId);
+                HttpContext.Session.SetObjectAsJson("Cart", cart);
+            }
 
-            cart.Items.RemoveAll(p => p.ProductId == productId);
-
-            // ✅ Cập nhật lại Session sau khi xóa
-            UpdateCartSession(cart);
-
-            return RedirectToAction("Index");
+            return Json(new { success = true, message = "Sản phẩm đã được xóa." });
         }
+
 
         [HttpGet]
         public IActionResult GetCartItemCount()
@@ -140,6 +148,36 @@ namespace NguyenQuocVuong_Nhom11.Controllers
             return Json(new { success = false });
         }
 
+        [HttpPost]
+        public IActionResult ClearCart()
+        {
+            HttpContext.Session.Remove("Cart");
+            return PartialView("_CartPartial", new List<CartItem>());
+        }
+
+
+        [HttpPost]
+        public IActionResult UpdateCart(int productId, int quantity)
+        {
+            var cart = HttpContext.Session.GetObjectFromJson<List<CartItem>>("Cart") ?? new List<CartItem>();
+            var cartItem = cart.FirstOrDefault(p => p.ProductId == productId);
+
+            if (cartItem != null)
+            {
+                cartItem.Quantity = quantity;
+            }
+
+            HttpContext.Session.SetObjectAsJson("Cart", cart);
+            return PartialView("_CartPartial", cart);
+        }
+
+        [HttpGet]
+        public IActionResult GetCartCount()
+        {
+            var cart = HttpContext.Session.GetObjectFromJson<List<CartItem>>("Cart") ?? new List<CartItem>();
+            int count = cart.Sum(i => i.Quantity);
+            return Content(count.ToString());
+        }
 
     }
 }

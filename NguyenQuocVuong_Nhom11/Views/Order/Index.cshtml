@@ -1,0 +1,33 @@
+﻿@model List<Order>
+
+<h2>Danh sách đơn hàng</h2>
+
+<table class="table table-bordered">
+    <thead class="thead-dark">
+        <tr>
+            <th>Mã đơn</th>
+            <th>Người dùng</th>
+            <th>Ngày đặt</th>
+            <th>Tổng tiền</th>
+            <th>Địa chỉ giao hàng</th>
+            <th>Ghi chú</th>
+            <th>Chi tiết</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in Model)
+        {
+                <tr>
+                    <td>@order.Id</td>
+                    <td>@order.ApplicationUser.UserName</td>
+                    <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@order.TotalPrice.ToString("C")</td>
+                    <td>@order.ShippingAddress</td>
+                    <td>@order.Notes</td>
+                    <td>
+                        <a href="/Order/Details/@order.Id" class="btn btn-info btn-sm">Xem</a>
+                    </td>
+                </tr>
+        }
+    </tbody>
+</table>

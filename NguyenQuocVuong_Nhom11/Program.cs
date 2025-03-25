@@ -24,6 +24,7 @@ builder.Services.AddSession(options =>
 });
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<ICartService, CartService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
         .AddDefaultTokenProviders()
